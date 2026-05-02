@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.email == 'xuanduan1905@gmail.com';
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow get: if isAdmin();
+      allow list: if isSuperAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'address', 'name', 'email', 'updatedAt']);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.email is string && data.email.size() < 128;
+    }
+
+    // Products Collection
+    match /products/{productId} {
+      allow read: if isAdmin() || existing().isPublished == true;
+      allow write: if isAdmin();
+    }
+
+    // Settings Collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Vouchers Collection (Public Read, Admin Write)
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidVoucher(incoming());
+      allow update: if isAdmin() && isValidVoucher(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidVoucher(data) {
+      return data.keys().hasAll(['code', 'type', 'value', 'isActive']) &&
+             data.code is string && data.code.size() <= 32 &&
+             data.type in ['percentage', 'fixed'] &&
+             data.value is number && data.value >= 0 &&
+             data.isActive is bool;
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      allow get: if isAdmin() || (isSignedIn() && (existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      
+      // Guest orders
+      allow create: if isValidOrder(incoming());
+      
+      allow update: if (isAdmin()) || (
+                    isSignedIn() && existing().userId == request.auth.uid && 
+                    isValidOrder(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                    existing().status != 'Success'); // Cannot update once finished
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['items', 'totalPrice', 'createdAt', 'status']) &&
+             data.items is list && data.items.size() > 0 &&
+             data.totalPrice is number && data.totalPrice >= 0 &&
+             data.status in ['Pending', 'In-Progress', 'Ready', 'Shipping', 'Success'] &&
+             data.createdAt is number;
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "FoodieGo - Đặt Đồ Ăn & Giao Hàng Siêu Tốc",
+  "description": "Ứng dụng đặt đồ ăn hiện đại tích hợp Grab Express, thanh toán nhanh chóng và quản lý đơn hàng thông minh.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}

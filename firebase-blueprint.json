@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "App user profile storage",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "email"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Food menu items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "addons": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Addon" }
+        }
+      }
+    },
+    "ShopSettings": {
+      "title": "ShopSettings",
+      "description": "General store configuration",
+      "type": "object",
+      "properties": {
+        "shopName": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "icon": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "bankName": { "type": "string" },
+        "paymentLink": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "Addon": {
+      "title": "Addon",
+      "description": "Optional extra for complex products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" }
+      }
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Transaction detail records",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "guestInfo": { "type": "object" },
+        "items": { "type": "array" },
+        "totalPrice": { "type": "number" },
+        "shippingFee": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "In-Progress", "Ready", "Shipping", "Success"] },
+        "grabId": { "type": "string" },
+        "voucherId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "Voucher": {
+      "title": "Voucher",
+      "description": "Discount codes for promotional offers",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["percentage", "fixed"] },
+        "value": { "type": "number" },
+        "minOrder": { "type": "number" },
+        "maxDiscount": { "type": "number" },
+        "usageLimit": { "type": "number" },
+        "usedCount": { "type": "number" },
+        "expiryDate": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles"
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of food items"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders"
+    },
+    "settings/{settingId}": {
+      "schema": "ShopSettings",
+      "description": "App configuration parameters"
+    },
+    "vouchers/{voucherId}": {
+      "schema": "Voucher",
+      "description": "Store discount coupons"
+    }
+  }
+}
