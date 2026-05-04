@@ -149,9 +149,9 @@ export default function CheckoutForm({ onBack, onSuccess }: CheckoutFormProps) {
         toast.success('Đặt hàng thành công!');
         onSuccess(orderId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
+      toast.error(error.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }

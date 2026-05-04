@@ -40,17 +40,18 @@ service cloud.firestore {
     // Admins Collection
     match /admins/{adminId} {
       allow get: if isAdmin();
-      allow list: if isSuperAdmin();
+      allow list: if isAdmin();
       allow write: if isSuperAdmin();
     }
 
     // Users Collection
     match /users/{userId} {
-      allow get: if isOwner(userId) || isSuperAdmin();
-      allow list: if isSuperAdmin();
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'address', 'name', 'email', 'updatedAt']);
+      allow update: if (isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'address', 'name', 'email', 'updatedAt', 'totalOrders', 'totalSpent', 'userId', 'createdAt'])) ||
+                    (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['isBlocked', 'updatedAt']));
     }
 
     function isValidUser(data) {
@@ -65,6 +66,20 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Categories Collection
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCategory(incoming());
+      allow update: if isAdmin() && isValidCategory(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['name', 'order']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 64 &&
+             data.order is number;
+    }
+
     // Settings Collection
     match /settings/{settingId} {
       allow read: if true;
@@ -75,7 +90,8 @@ service cloud.firestore {
     match /vouchers/{voucherId} {
       allow read: if true;
       allow create: if isAdmin() && isValidVoucher(incoming());
-      allow update: if isAdmin() && isValidVoucher(incoming());
+      allow update: if (isAdmin() && isValidVoucher(incoming())) ||
+                    (incoming().usedCount == existing().get('usedCount', 0) + 1 && incoming().diff(existing()).affectedKeys().hasOnly(['usedCount']));
       allow delete: if isAdmin();
     }
 

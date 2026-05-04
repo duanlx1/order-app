@@ -13,6 +13,12 @@ export interface Product {
   updatedAt?: number;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  order: number;
+}
+
 export interface Addon {
   id: string;
   name: string;

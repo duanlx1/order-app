@@ -6,10 +6,9 @@ import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
 import CartDrawer from './components/CartDrawer';
 import CheckoutForm from './components/CheckoutForm';
-import { CATEGORIES } from './constants';
-import { Product } from './types';
+import { Product, Category } from './types';
 import { Utensils, Clock, ThumbsUp, ShieldCheck, CheckCircle2, ChevronRight, Phone, MapPin } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 import AdminDashboard from './components/AdminDashboard';
@@ -25,6 +24,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [orderId, setOrderId] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [shopSettings, setShopSettings] = useState({
     shopName: 'FoodieGo Store',
     address: '',
@@ -54,9 +54,22 @@ export default function App() {
       console.error('Error fetching settings:', err);
     });
 
+    // Listen to categories
+    const categoriesQuery = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+      const catsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+      setCategories(catsData);
+    }, (err) => {
+      console.error('Error fetching categories:', err);
+    });
+
     return () => {
       unsubscribe();
       unsubscribeSettings();
+      unsubscribeCategories();
     };
   }, []);
 
@@ -95,6 +108,7 @@ export default function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onHistoryClick={() => setView('history')}
+        onAdminClick={() => setView('admin')}
         shopIcon={shopSettings.icon}
         shopName={shopSettings.shopName}
       />
@@ -103,7 +117,7 @@ export default function App() {
         {view === 'menu' && (
           <>
             {/* Hero Section */}
-            <header className="relative bg-orange-600 pt-16 pb-32 px-4 overflow-hidden">
+            <header className="relative bg-orange-600 pt-5 pb-15 px-4 overflow-hidden">
                <div className="absolute inset-0 opacity-10">
                  <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,1),transparent)]"></div>
                </div>
@@ -111,39 +125,37 @@ export default function App() {
                  <motion.h2 
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
-                   className="text-white text-5xl md:text-7xl font-black mb-6 tracking-tight uppercase"
+                   className="text-white text-4xl md:text-7xl font-black mb-4 md:mb-6 tracking-tight uppercase"
                  >
-                   {shopSettings.shopName.split(' ').map((word, i) => (
-                     <span key={i}>{word} {i === 0 && <br className="md:hidden" />} </span>
-                   ))}
+                   {shopSettings.shopName}
                  </motion.h2>
-                 <motion.p 
-                   initial={{ opacity: 0, y: 20 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: 0.1 }}
-                   className="text-orange-100 text-lg md:text-xl font-medium max-w-2xl mx-auto mb-10"
-                 >
-                   Hương vị đỉnh cao, giao hàng siêu tốc chỉ trong 25 phút.
-                 </motion.p>
-                 <div className="flex flex-wrap justify-center gap-4">
-                   <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl text-white font-bold border border-white/20">
-                     <Clock size={20} className="text-orange-300" />
-                     Giao nhanh 25'
-                   </div>
-                   <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl text-white font-bold border border-white/20">
-                     <ThumbsUp size={20} className="text-orange-300" />
-                     Chất lượng 5*
-                   </div>
+                 <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+                   <a 
+                     href={shopSettings.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shopSettings.address)}` : '#'}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="flex items-center gap-2 md:gap-3 bg-white/10 backdrop-blur-md px-4 py-2 md:px-6 md:py-3 rounded-xl md:rounded-2xl text-white text-xs md:text-base font-bold border border-white/20 hover:bg-white/20 transition-colors"
+                   >
+                     <MapPin size={16} className="text-orange-300 md:w-5 md:h-5 shrink-0" />
+                     <span className="truncate max-w-[200px] md:max-w-none">{shopSettings.address || 'Đang cập nhật địa chỉ'}</span>
+                   </a>
+                   <a 
+                     href={shopSettings.phone ? `tel:${shopSettings.phone.replace(/[^0-9+]/g, '')}` : '#'}
+                     className="flex items-center gap-2 md:gap-3 bg-white/10 backdrop-blur-md px-4 py-2 md:px-6 md:py-3 rounded-xl md:rounded-2xl text-white text-xs md:text-base font-bold border border-white/20 hover:bg-white/20 transition-colors"
+                   >
+                     <Phone size={16} className="text-orange-300 md:w-5 md:h-5 shrink-0" />
+                     <span>{shopSettings.phone || 'Đang cập nhật SĐT'}</span>
+                   </a>
                  </div>
                </div>
             </header>
 
             {/* Categories & Menu */}
-            <section className="max-w-7xl mx-auto px-4 -mt-16 relative z-20">
-              <div className="bg-white rounded-[2rem] shadow-xl shadow-orange-900/5 p-8 md:p-12 border border-gray-100">
+            <section className="max-w-7xl mx-auto px-2 md:px-4 -mt-8 md:-mt-12 relative z-20">
+              <div className="bg-white rounded-[1rem] md:rounded-[2rem] shadow-xl shadow-orange-900/5 p-2 md:p-8 lg:p-12 border border-gray-100">
                 <div className="flex items-center justify-between mb-12 flex-wrap gap-6">
                   <div className="flex gap-3 overflow-x-auto pb-4 md:pb-0 scrollbar-hide no-scrollbar">
-                    {CATEGORIES.map((cat) => (
+                    {['Phổ biến', ...categories.map(c => c.name)].map((cat) => (
                       <button 
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
@@ -159,15 +171,20 @@ export default function App() {
                   </div>
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-xl">
                     <Utensils size={14} className="text-orange-500" />
-                    {products.length} món sẵn sàng
+                    {products.filter(p => {
+                      const matchesCategory = activeCategory === "Phổ biến" || p.category === activeCategory;
+                      const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                         (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+                      return matchesCategory && matchesSearch;
+                    }).length} món sẵn sàng
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
                   {products.filter(p => {
                     const matchesCategory = activeCategory === "Phổ biến" || p.category === activeCategory;
-                    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                       p.description.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                       (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
                     return matchesCategory && matchesSearch;
                   }).map((product) => (
                     <ProductCard 
@@ -179,8 +196,8 @@ export default function App() {
                 </div>
                 {products.filter(p => {
                   const matchesCategory = activeCategory === "Phổ biến" || p.category === activeCategory;
-                  const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                     p.description.toLowerCase().includes(searchQuery.toLowerCase());
+                  const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                     (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
                   return matchesCategory && matchesSearch;
                 }).length === 0 && (
                   <div className="text-center py-20">
@@ -254,14 +271,22 @@ export default function App() {
             <div className="text-center lg:text-left max-w-sm">
               <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">{shopSettings.shopName}</h3>
               <div className="space-y-2 mb-6">
-                <div className="flex items-start gap-2 justify-center lg:justify-start">
-                  <MapPin size={14} className="text-orange-500 mt-0.5 shrink-0" />
-                  <p className="text-xs text-gray-500 font-medium leading-relaxed">{shopSettings.address || 'Đang cập nhật địa chỉ'}</p>
-                </div>
-                <div className="flex items-center gap-2 justify-center lg:justify-start">
-                  <Phone size={14} className="text-orange-500 shrink-0" />
-                  <p className="text-xs text-gray-500 font-medium">{shopSettings.phone || 'Đang cập nhật SĐT'}</p>
-                </div>
+                <a 
+                  href={shopSettings.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shopSettings.address)}` : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 justify-center lg:justify-start group cursor-pointer"
+                >
+                  <MapPin size={14} className="text-orange-500 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs text-gray-500 group-hover:text-orange-600 font-medium leading-relaxed transition-colors">{shopSettings.address || 'Đang cập nhật địa chỉ'}</p>
+                </a>
+                <a 
+                  href={shopSettings.phone ? `tel:${shopSettings.phone.replace(/[^0-9+]/g, '')}` : '#'}
+                  className="flex items-center gap-2 justify-center lg:justify-start group cursor-pointer"
+                >
+                  <Phone size={14} className="text-orange-500 shrink-0 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs text-gray-500 group-hover:text-orange-600 font-medium transition-colors">{shopSettings.phone || 'Đang cập nhật SĐT'}</p>
+                </a>
               </div>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Hương vị của sự tận tâm</p>
             </div>

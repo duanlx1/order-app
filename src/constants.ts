@@ -1,6 +1,6 @@
 import { Product, Addon } from "./types";
 
-export const CATEGORIES = ["Phổ biến", "Món chính", "Khai vị", "Đồ uống", "Tráng miệng"];
+export const CATEGORIES = ["Phổ biến", "Món chính", "Khai vị", "Đồ uống", "Tráng miệng", "Ăn vặt"];
 
 export const MOCK_PRODUCTS: Product[] = [
   {
